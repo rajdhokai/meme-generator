@@ -20,7 +20,6 @@ const App: React.FC = () => {
   const [bottomTextPosition, setBottomTextPosition] = useState<{ x: number; y: number }>({ x: 250, y: 460 });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [uploadedCid, setUploadedCid] = useState<string>("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 500, height: 500 });
 
@@ -64,6 +63,40 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError("");
     try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_PINATA_JWT}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to upload to Pinata');
+      }
+      const data = await response.json();
+      const ipfsHash = data.IpfsHash;
+      setUrl(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`);
+    } catch (error) {
+      console.error('Error uploading to Pinata:', error);
+      setError("Failed to upload the file. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Commented out previous handleSubmission and refreshSignedUrl functions
+  /*
+  const handleSubmission = async () => {
+    if (!selectedFile) {
+      setError("Please select a file to upload.");
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    try {
       const upload = await pinata.upload.file(selectedFile);
       console.log(upload);
       setUploadedCid(upload.cid);
@@ -88,6 +121,7 @@ const App: React.FC = () => {
       setError("Failed to refresh the image URL. Please try again.");
     }
   };
+  */
 
   const drawMeme = () => {
     if (!canvasRef.current || !url) return;
@@ -147,19 +181,7 @@ const App: React.FC = () => {
     }, "image/png");
   };
 
-  useEffect(() => {
-    let refreshInterval: NodeJS.Timeout;
-
-    if (uploadedCid) {
-      refreshInterval = setInterval(() => {
-        refreshSignedUrl(uploadedCid);
-      }, 4 * 60 * 1000); // Refresh every 4 minutes
-    }
-
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-    };
-  }, [uploadedCid]);
+  // Removed useEffect for refreshing signed URL
 
   useEffect(() => {
     if (url) {
@@ -197,14 +219,6 @@ const App: React.FC = () => {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
             {error}
-            {error.includes("URL") && (
-              <button
-                onClick={() => refreshSignedUrl(uploadedCid)}
-                className="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
-              >
-                Refresh URL
-              </button>
-            )}
           </div>
         )}
 
