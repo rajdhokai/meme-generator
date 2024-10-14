@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { pinata } from "./utils/config";
+// import { pinata } from "./utils/config";
 
 // Simple Loader Component
 const Loader: React.FC = () => (
